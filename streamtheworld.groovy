@@ -33,8 +33,9 @@ println callSign
 XmlSlurper xmlSlurper = new XmlSlurper();
 String signalMetaData = getSignalMetaData(callSign);
 println signalMetaData;
-def signal = xmlSlurper.parseText(signalMetaData);
-println signal
+def liveStreamConfig = xmlSlurper.parseText(signalMetaData);
+println liveStreamConfig
+String url = createURL(liveStreamConfig)
 
 int recordMPlayer(String url, int time, String callSign)
 {
@@ -89,4 +90,16 @@ String getSignalMetaData(callSign)
 </mountpoints>
 </live_stream_config>
 '''
+}
+
+String createURL(String liveStreamConfig)
+{
+	def mountpoint = liveStreamConfig.mountpoints.mountpoint
+	checkStatus(mountpoint)
+}
+
+void checkStatus(def mountpoint)
+{
+	if(mountpoint.status.status-code != "200")
+		throw new RuntimeException("Error loading stream: " + mountpoint.status.status-message)
 }
