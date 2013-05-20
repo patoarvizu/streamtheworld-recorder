@@ -31,3 +31,9 @@ cron { "record-el-despioje":
   hour => "7",
   weekday => ["1-5"]
 }
+exec { "set-git-username":
+  command => "/usr/bin/git config --global user.name \"Pato Arvizu\"",
+}
+exec { "set-git-email":
+  command => "/usr/bin/git config --global user.email patoarvizu@gmail.com"
+}
