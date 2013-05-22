@@ -1,7 +1,9 @@
-@Grab(group='org.codehaus.groovy.modules.http-builder', module='http-builder', version='0.5.0-RC2')
-import groovyx.net.http.RESTClient
+@Grab(group='org.codehaus.groovy.modules.http-builder', module='http-builder', version='0.6')
 import groovyx.net.http.HTTPBuilder
+import static groovyx.net.http.Method.GET
+import static groovyx.net.http.ContentType.TEXT
 
+println "Starting"
 if (args.length < 1)
 {
 	println 'usage: station callsign must be the first argument'
@@ -26,80 +28,61 @@ if (args[0] == "radioacir")
 	println "start"
 	System.exit(startMPlayer("http://76.73.20.18:8230/"))
 }
-
-String callSign = validateCallSign(args[0])
-println callSign
-
+String callSign = args[0];
 XmlSlurper xmlSlurper = new XmlSlurper();
 String signalMetaData = getSignalMetaData(callSign);
-println signalMetaData;
 def liveStreamConfig = xmlSlurper.parseText(signalMetaData);
-println liveStreamConfig
-String url = createURL(liveStreamConfig)
+String url = createURL(liveStreamConfig, callSign);
+println "URL: ${url}"
+if (args.length >= 2 && args[1].equals("r"))
+{
+    if(args.length == 3)
+        System.exit(recordMPlayer(url, Integer.parseInt(args[2]), callSign));
+    else
+        System.exit(recordMPlayer(url, 60, callSign));
+}
+else
+{
+    println "Start"
+    System.exit(startMPlayer(url));
+}
 
 int recordMPlayer(String url, int time, String callSign)
 {
-	return 1;
+    //p = subprocess.Popen(['mplayer', location, '-forceidx', '-dumpstream', '-dumpfile', datetime.datetime.now().strftime("%y-%m-%d-%H-%M") + '-' + callsign + '.mp3'])
+    println "mplayer ${url} -forceidx -dumpstream -dumpfile " + (new Date().format("yy-MM-dd-HH-mm")) + "-${callSign}.mp3"
+    String date = new Date().format("yy-MM-dd-HH-mm");
+    Process mPlayerProcess = "mplayer ${url} -forceidx -dumpstream -dumpfile ${date}-${callSign}.mp3".execute();
+    System.sleep(time * 1000)
+	return mPlayerProcess.exitValue();
 }
 
 int startMPlayer(String url)
 {
-	return 1;
-}
-
-String validateCallSign(String callSign)
-{
-	return callSign;
+	Process mPlayerProcess = "mplayer ${url}".execute();
+    mPlayerProcess.waitFor();
+    return mPlayerProcess.exitValue();
 }
 
 String getSignalMetaData(callSign)
 {
-	return '''
-<live_stream_config version="1.5" xmlns="http://provisioning.streamtheworld.com/player/livestream-1.5">
-<mountpoints>
-<mountpoint>
-  <status>
-  <status-code>200</status-code>
-  <status-message>OK</status-message>
-  </status>
-    <transports>
-                     <transport>http</transport>
-              </transports>
-      <servers>
-     <server sid="2473">
-   <ip>2473.live.streamtheworld.com</ip>
-   <ports>
-        <port type="http">80</port>
-        <port type="http">3690</port>
-        <port type="http">443</port>
-       </ports>
-   </server>
-      </servers>
-        <mount>RG690</mount>
-           <format>FLV</format>
-    
-    <bitrate>24000</bitrate>
-    
-         <media-format container="flv" cuepoints="stwcue"> 
-                      <audio index="0" samplerate="22050" codec="mp3" bitrate="24000" channels="1"/>
-                      </media-format>
-        <authentication>0</authentication>
-    <timeout>0</timeout>
-    <send-page-url>0</send-page-url>
-</mountpoint>
-</mountpoints>
-</live_stream_config>
-'''
+    HTTPBuilder httpBuilder = new HTTPBuilder("http://playerservices.streamtheworld.com/api/livestream?version=1.5&mount=${callSign}&lang=en");
+    def metaData = httpBuilder.get(path : "/api/livestream", contentType: TEXT, query : [version : 1.5, mount : callSign, lang : "en"], headers : [Accept : 'application/xml'])
+    return metaData.text;
 }
 
-String createURL(String liveStreamConfig)
+String createURL(def liveStreamConfig, String callSign)
 {
-	def mountpoint = liveStreamConfig.mountpoints.mountpoint
+    def mountpoint = liveStreamConfig.mountpoints.mountpoint
 	checkStatus(mountpoint)
+    String protocol = mountpoint.transports.transport;
+    String ip = mountpoint.servers.server.ip;
+    String port = liveStreamConfig.mountpoints.mountpoint.servers.server.ports.port[0];
+    return protocol + "://" + ip + ":" + port + "/" + callSign;
 }
 
 void checkStatus(def mountpoint)
 {
-	if(mountpoint.status.status-code != "200")
-		throw new RuntimeException("Error loading stream: " + mountpoint.status.status-message)
+    if(mountpoint.status."status-code" != "200")
+		throw new RuntimeException("Error loading stream: " + mountpoint.status."status-message")
 }
