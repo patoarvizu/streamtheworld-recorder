@@ -20,3 +20,18 @@ exec { "set-timezone":
   require => File["timezone"],
   subscribe => File["timezone"]
 }
+user { "ubuntu":
+  home => "/home/ubuntu",
+  ensure => "present"
+}
+cron { "record-el-despioje":
+  command => "/home/ubuntu/streamtheworld-recorder/streamtheworld-scheduled.sh D99 240",
+  user => "ubuntu",
+  minute => "0",
+  hour => "7",
+  weekday => ["1-5"]
+}
+file { "gitconfig":
+  path => "/home/ubuntu/.gitconfig",
+  content => "[user]\n\tname = Pato Arvizu\n\temail = patoarvizu@gmail.com"
+}
