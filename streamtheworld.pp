@@ -27,7 +27,7 @@ user { "ubuntu":
 cron { "record-el-despioje":
   command => "/home/ubuntu/streamtheworld-recorder/streamtheworld-scheduled.sh D99 240",
   user => "ubuntu",
-  minute => "0",
+  minute => "30",
   hour => "7",
   weekday => ["1-5"]
 }
