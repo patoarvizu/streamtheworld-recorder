@@ -10,6 +10,9 @@ package { "mutt":
 package { "tzdata":
   ensure => installed
 }
+package { "mailutils":
+  ensure => installed
+}
 file { "timezone":
   path => "/etc/timezone",
   content => "America/New_York",
@@ -25,7 +28,7 @@ user { "ubuntu":
   ensure => "present"
 }
 cron { "record-el-despioje":
-  command => "/home/ubuntu/streamtheworld-recorder/streamtheworld-scheduled.sh D99 240",
+  command => "/home/ubuntu/streamtheworld-recorder/streamtheworld-scheduled.sh D99 210",
   user => "ubuntu",
   minute => "30",
   hour => "7",
@@ -33,5 +36,5 @@ cron { "record-el-despioje":
 }
 file { "gitconfig":
   path => "/home/ubuntu/.gitconfig",
-  content => "[user]\n\tname = Pato Arvizu\n\temail = patoarvizu@gmail.com"
+  content => "[user]\n\tname = Pato Arvizu\n\temail = contact@patoarvizu.com"
 }
