@@ -28,6 +28,7 @@ user { "ubuntu":
   ensure => "present"
 }
 cron { "record-el-despioje":
+  environment => "MAILTO=ubuntu@localhost",
   command => "/home/ubuntu/streamtheworld-recorder/streamtheworld-scheduled.sh D99 210",
   user => "ubuntu",
   minute => "30",
