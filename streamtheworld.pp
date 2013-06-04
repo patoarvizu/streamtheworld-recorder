@@ -27,12 +27,27 @@ user { "ubuntu":
   home => "/home/ubuntu",
   ensure => "present"
 }
-cron { "record-el-despioje":
+cron { "record-el-despioje-1":
   environment => "MAILTO=ubuntu@localhost",
-  command => "/home/ubuntu/streamtheworld-recorder/streamtheworld-scheduled.sh D99 210",
+  command => "/home/ubuntu/streamtheworld-recorder/streamtheworld-scheduled.sh D99 90",
   user => "ubuntu",
   minute => "30",
   hour => "7",
+  weekday => ["1-5"]
+}
+cron { "record-el-despioje-2":
+  command => "/home/ubuntu/streamtheworld-recorder/streamtheworld-scheduled.sh D99 60",
+  user => "ubuntu",
+  minute => "0",
+  hour => "9",
+  weekday => ["1-5"]
+}
+cron { "record-el-despioje-3":
+  environment => "MAILTO=ubuntu@localhost",
+  command => "/home/ubuntu/streamtheworld-recorder/streamtheworld-scheduled.sh D99 60",
+  user => "ubuntu",
+  minute => "0",
+  hour => "10",
   weekday => ["1-5"]
 }
 file { "gitconfig":
