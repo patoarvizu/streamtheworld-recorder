@@ -103,10 +103,10 @@ if __name__ == '__main__':
         if(sys.argv[1] == 'radioacir'):
             if len(sys.argv) >= 3 and sys.argv[2] == 'r':
                 if len(sys.argv) == 4:
-                    sys.exit(record_mplayer('http://76.73.20.18:8230/', int(sys.argv[3]), 'radioacir'))
+                    sys.exit(record_mplayer('http://transmisionesdigitales.com:8010/', int(sys.argv[3]), 'radioacir'))
                 else:
-                    sys.exit(record_mplayer('http://76.73.20.18:8230/', 60, 'radioacir'))
-            sys.exit(start_mplayer('http://76.73.20.18:8230/'))
+                    sys.exit(record_mplayer('http://transmisionesdigitales.com:8010/', 60, 'radioacir'))
+            sys.exit(start_mplayer('http://transmisionesdigitales.com:8010/'))
 
         callsign = validate_callsign(sys.argv[1])
 
