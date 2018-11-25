@@ -2,3 +2,7 @@
 *.classpath
 *.class
 *.mp3
+terraform.tfstate
+terraform.tfstate.backup
+terraform.tfstate.*
+.terraform
