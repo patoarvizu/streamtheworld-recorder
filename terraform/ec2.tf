@@ -75,7 +75,7 @@ resource "aws_launch_configuration" "stwr" {
   associate_public_ip_address = true
   iam_instance_profile = "${aws_iam_instance_profile.worker.name}"
   image_id = "${data.aws_ami.eks_worker.id}"
-  instance_type = "m4.large"
+  instance_type = "t3.micro"
   name_prefix = "${local.cluster_name}-"
   security_groups = [ "${aws_security_group.worker.id}" ]
   user_data_base64 = "${base64encode(local.worker_user_data)}"
