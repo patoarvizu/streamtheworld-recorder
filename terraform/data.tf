@@ -68,3 +68,12 @@ data "aws_iam_policy_document" "worker_ecr_policy" {
     resources = [ "*" ]
   }
 }
+
+data "template_file" "kubeconfig" {
+  template = "${file("${path.module}/templates/kubeconfig.tpl")}"
+  vars {
+    server_endpoint = "${aws_eks_cluster.stwr.endpoint}"
+    certificate_authority_data = "${aws_eks_cluster.stwr.certificate_authority.0.data}"
+    cluster_name = "${local.cluster_name}"
+  }
+}

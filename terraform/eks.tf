@@ -10,3 +10,9 @@ resource "aws_eks_cluster" "stwr" {
     "aws_iam_role_policy_attachment.service_policy",
   ]
 }
+
+resource "null_resource" "kubeconfig" {
+  provisioner "local-exec" {
+    command = "echo '${data.template_file.kubeconfig.rendered}' > '${pathexpand("~/.kube/patoarvizu-config")}'"
+  }
+}

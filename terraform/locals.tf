@@ -1,36 +1,5 @@
 locals {
   cluster_name = "stwr"
-  kubeconfig = <<KUBECONFIG
-
-
-apiVersion: v1
-clusters:
-- cluster:
-    server: ${aws_eks_cluster.stwr.endpoint}
-    certificate-authority-data: ${aws_eks_cluster.stwr.certificate_authority.0.data}
-  name: stwr
-contexts:
-- context:
-    cluster: stwr
-    user: aws
-  name: stwr
-current-context: stwr
-kind: Config
-preferences: {}
-users:
-- name: aws
-  user:
-    exec:
-      apiVersion: client.authentication.k8s.io/v1alpha1
-      command: aws-iam-authenticator
-      env:
-        - name: "AWS_DEFAULT_PROFILE"
-          value: "patoarvizu-admin"
-      args:
-        - "token"
-        - "-i"
-        - "${local.cluster_name}"
-KUBECONFIG
   worker_user_data = <<USERDATA
 #!/bin/bash
 set -o xtrace
