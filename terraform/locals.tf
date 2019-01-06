@@ -23,6 +23,9 @@ users:
     exec:
       apiVersion: client.authentication.k8s.io/v1alpha1
       command: aws-iam-authenticator
+      env:
+        - name: "AWS_DEFAULT_PROFILE"
+          value: "patoarvizu-admin"
       args:
         - "token"
         - "-i"
