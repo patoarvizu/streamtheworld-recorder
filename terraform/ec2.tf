@@ -86,7 +86,7 @@ resource "aws_launch_configuration" "stwr" {
 
 resource "aws_autoscaling_group" "stwr" {
   launch_configuration = "${aws_launch_configuration.stwr.id}"
-  max_size = 1
+  max_size = 10
   min_size = 0
   name = "${local.cluster_name}-workers"
   vpc_zone_identifier = [ "${aws_subnet.stwr.*.id}" ]
