@@ -13,3 +13,9 @@ resource "kubernetes_config_map" "aws_auth" {
 EOF
   }
 }
+
+resource "null_resource" "cluster_autoscaler" {
+  provisioner "local-exec" {
+    command = "kubectl --kubeconfig=${pathexpand("~/.kube/patoarvizu-config")} --context=stwr apply -f ${pathexpand("${path.module}/kubernetes/cluster-autoscaler.yaml")}"
+  }
+}
