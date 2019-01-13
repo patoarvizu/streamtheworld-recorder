@@ -19,13 +19,20 @@ while :; do
       RECORDING_NAME=$2
       shift 2;;
 
+    -c|--copy-to-s3)
+      COPY_TO_S3=true
+      shift;;
+
     *)
       if [[ -z $CALL_SIGNAL ]]; then
         echo "--call-signal flag is expected"
       fi
       TIME_LENGTH=${TIME_LENGTH:-60}
       DESTINATION_PATH=${DESTINATION_PATH:-/recordings/}
-      RECORDING_NAME=${RECORDING_NAME:-$(date +%y-%m-%d-%H-%M)}
+      export TZ=America/New_York
+      DATE=$(date +%y-%m-%d-%H-%M)
+      RECORDING_NAME=${RECORDING_NAME:-$DATE}
+      COPY_TO_S3=${COPY_TO_S3:-false}
       shift
       break;;
   esac
@@ -42,7 +49,7 @@ for i in $(seq 0 $(echo $servers | jq -r 'length - 1')); do
     port=$(echo $server_info | jq -r '.ports.port['$j']["$t"]')
     mkdir -p /tmp/.recordings
     mplayer $protocol://$ip:$port/$CALL_SIGNAL -forceidx -dumpstream -dumpfile /tmp/.recordings/$RECORDING_NAME-$CALL_SIGNAL-$server_id-$port.mp3 & pid=$!
-    (sleep $TIME_LENGTH && kill -9 $pid) &
+    (sleep $TIME_LENGTH && kill $pid) &
   done
 done
 
@@ -50,3 +57,7 @@ wait
 
 mkdir -p $DESTINATION_PATH
 cp /tmp/.recordings/* $DESTINATION_PATH/
+
+if [[ $COPY_TO_S3 == true ]]; then
+  aws s3 cp $DESTINATION_PATH/ s3://patoarvizu-stwr-recordings/$RECORDING_NAME-$DATE/ --recursive
+fi
