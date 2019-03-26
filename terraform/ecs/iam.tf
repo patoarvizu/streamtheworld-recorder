@@ -3,14 +3,10 @@ resource "aws_iam_role" "stwr_task" {
   assume_role_policy = "${data.aws_iam_policy_document.ecs_tasks_assume_role_policy.json}"
 }
 
-resource "aws_iam_role_policy_attachment" "s3_access" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+resource "aws_iam_role_policy" "s3_access" {
+  name = "stwr-recordings"
   role = "${aws_iam_role.stwr_task.name}"
-}
-
-resource "aws_iam_role_policy_attachment" "ecs_access" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonECS_FullAccess"
-  role = "${aws_iam_role.stwr_task.name}"
+  policy = "${data.aws_iam_policy_document.stwr_recordings_bucket.json}"
 }
 
 resource "aws_iam_role" "stwr_execution" {

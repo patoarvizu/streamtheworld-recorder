@@ -23,6 +23,13 @@ data "aws_iam_policy_document" "ecr_repo_policy" {
   }
 }
 
+data "aws_iam_policy_document" "stwr_recordings_bucket" {
+  statement {
+    actions = [ "s3:PutObject" ]
+    resources = [ "${aws_s3_bucket.recordings.arn}/*" ]
+  }
+}
+
 data "template_file" "stwr_task_definition" {
   template = "${file("${path.module}/templates/stwr.json.tpl")}"
   vars {

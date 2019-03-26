@@ -70,50 +70,7 @@ module "j11" {
   time_length = "11700"
 }
 
-module "j12" {
-  source = "../../modules/stwr-scheduled-event"
-  name = "monterrey-vs-cruz-azul-j12"
-  cron_expression = "0 2 31 MAR ? 2019"
-  call_signal = "D99"
-  time_length = "11700"
-}
-
-module "j13" {
-  source = "../../modules/stwr-scheduled-event"
-  name = "tigres-vs-pumas-j13"
-  cron_expression = "0 0 7 APR ? 2019"
-  call_signal = "D99"
-  time_length = "11700"
-}
-
-module "j14" {
-  source = "../../modules/stwr-scheduled-event"
-  name = "monterrey-vs-santos-j14"
-  cron_expression = "0 1 14 APR ? 2019"
-  call_signal = "D99"
-  time_length = "11700"
-}
-
-module "j15" {
-  source = "../../modules/stwr-scheduled-event"
-  name = "tigres-vs-morelia-j15"
-  cron_expression = "0 23 20 APR ? 2019"
-  call_signal = "D99"
-  time_length = "11700"
-}
-
-module "j16" {
-  source = "../../modules/stwr-scheduled-event"
-  name = "monterrey-vs-necaxa-j16"
-  cron_expression = "0 23 27 APR ? 2019"
-  call_signal = "D99"
-  time_length = "11700"
-}
-
-module "j17" {
-  source = "../../modules/stwr-scheduled-event"
-  name = "tigres-vs-chivas-j17"
-  cron_expression = "0 23 4 MAY ? 2019"
-  call_signal = "D99"
-  time_length = "11700"
+module "c2019" {
+  source = "../../modules/stwr-scheduled-season"
+  schedule = "${local.c2019_schedule}"
 }
