@@ -59,5 +59,6 @@ mkdir -p $DESTINATION_PATH
 cp /tmp/.recordings/* $DESTINATION_PATH/
 
 if [[ $COPY_TO_S3 == true ]]; then
-  aws s3 cp $DESTINATION_PATH/ s3://patoarvizu-stwr-recordings/$RECORDING_NAME-$DATE/ --recursive
+  largest_file=$(ls -S $DESTINATION_PATH/ | head -1)
+  aws s3 cp $DESTINATION_PATH/$largest_file s3://patoarvizu-stwr-recordings/$RECORDING_NAME-$DATE/
 fi
