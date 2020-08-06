@@ -38,6 +38,7 @@ while :; do
   esac
 done
 
+npm install -g xml2json-command
 servers=$(curl -s "http://playerservices.streamtheworld.com/api/livestream?version=1.5&mount=$CALL_SIGNAL&lang=en" | xml2json | jq '.live_stream_config.mountpoints.mountpoint.servers.server')
 
 for i in $(seq 0 $(echo $servers | jq -r 'length - 1')); do
