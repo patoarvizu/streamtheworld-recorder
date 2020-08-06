@@ -11,7 +11,7 @@ jobs:
       - checkout
       - run:
           name: Build image
-          commmand: |
+          command: |
             docker login --username $DOCKER_HUB_USER --password $DOCKER_HUB_ACCESS_TOKEN
             VERSION=${CIRCLE_TAG:-latest}
             docker build buildx create --name cci-builder --use
