@@ -7,22 +7,19 @@ jobs:
       image: ubuntu-1604:202007-01
     environment:
       DOCKER_CLI_EXPERIMENTAL: enabled
-      DOCKER_BUILDKIT: "1"
     steps:
       - checkout
       - run:
           name: Build image
           command: |
-            wget https://github.com/docker/buildx/releases/download/v0.4.1/buildx-v0.4.1.linux-amd64
-            cp buildx-v0.4.1.linux-amd64 ~/.docker/cli-plugins/docker-buildx
-            echo "Nevermind, buildx is not available in this version of Docker yet"
-            docker login --username $DOCKER_HUB_USER --password $DOCKER_HUB_ACCESS_TOKEN
-            VERSION=${CIRCLE_TAG:-latest}
-            docker build buildx create --name cci-builder --use
-            docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 --load -t patoarvizu/stwr:$CIRCLE_SHA1 .
-            docker tag patoarvizu/stwr:$CIRCLE_SHA1 patoarvizu/stwr:latest
-            docker tag patoarvizu/stwr:$CIRCLE_SHA1 patoarvizu/stwr:$VERSION
-            docker push patoarvizu/stwr:$CIRCLE_SHA1
+            echo "Nevermind CircleCI doesn't support ARM builds yet"
+            # docker login --username $DOCKER_HUB_USER --password $DOCKER_HUB_ACCESS_TOKEN
+            # VERSION=${CIRCLE_TAG:-latest}
+            # docker buildx create --name cci-builder --use
+            # docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 --load -t patoarvizu/stwr:$CIRCLE_SHA1 .
+            # docker tag patoarvizu/stwr:$CIRCLE_SHA1 patoarvizu/stwr:latest
+            # docker tag patoarvizu/stwr:$CIRCLE_SHA1 patoarvizu/stwr:$VERSION
+            # docker push patoarvizu/stwr:$CIRCLE_SHA1
 
 workflows:
   version: 2
