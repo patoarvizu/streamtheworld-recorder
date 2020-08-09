@@ -12,10 +12,10 @@ jobs:
       - run:
           name: Build image
           command: |
-            echo "Nevermind, buildx is not available in this version of Docker yet"
+            echo "Nevermind CircleCI doesn't support ARM builds yet"
             # docker login --username $DOCKER_HUB_USER --password $DOCKER_HUB_ACCESS_TOKEN
             # VERSION=${CIRCLE_TAG:-latest}
-            # docker build buildx create --name cci-builder --use
+            # docker buildx create --name cci-builder --use
             # docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 --load -t patoarvizu/stwr:$CIRCLE_SHA1 .
             # docker tag patoarvizu/stwr:$CIRCLE_SHA1 patoarvizu/stwr:latest
             # docker tag patoarvizu/stwr:$CIRCLE_SHA1 patoarvizu/stwr:$VERSION
