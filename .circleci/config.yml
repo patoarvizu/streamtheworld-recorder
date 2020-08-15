@@ -12,14 +12,14 @@ jobs:
       - run:
           name: Build image
           command: |
-            echo "Nevermind CircleCI doesn't support ARM builds yet"
-            # docker login --username $DOCKER_HUB_USER --password $DOCKER_HUB_ACCESS_TOKEN
-            # VERSION=${CIRCLE_TAG:-latest}
-            # docker buildx create --name cci-builder --use
-            # docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 --load -t patoarvizu/stwr:$CIRCLE_SHA1 .
-            # docker tag patoarvizu/stwr:$CIRCLE_SHA1 patoarvizu/stwr:latest
-            # docker tag patoarvizu/stwr:$CIRCLE_SHA1 patoarvizu/stwr:$VERSION
-            # docker push patoarvizu/stwr:$CIRCLE_SHA1
+            sudo apt-get update
+            sudo apt-get install qemu-user -y
+            docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+            docker buildx ls
+            docker login --username $DOCKER_HUB_USER --password $DOCKER_HUB_ACCESS_TOKEN
+            VERSION=${CIRCLE_TAG:-latest}
+            docker buildx create --name cci-builder --use
+            docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 --push -t patoarvizu/stwr:$CIRCLE_SHA1 -t patoarvizu/stwr:$VERSION -t patoarvizu/stwr:latest .
 
 workflows:
   version: 2
