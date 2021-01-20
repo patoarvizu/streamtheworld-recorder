@@ -20,7 +20,7 @@ jobs:
             VERSION=${CIRCLE_TAG:-latest}
             docker buildx create --name cci-builder --use
             # docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 --push -t patoarvizu/stwr:$CIRCLE_SHA1 -t patoarvizu/stwr:$VERSION -t patoarvizu/stwr:latest .
-            docker buildx build -f go.Dockerfile --platform linux/amd64,linux/arm64,linux/arm/v7 --push -t patoarvizu/stwr:$CIRCLE_SHA1-go -t patoarvizu/stwr:$VERSION-go -t patoarvizu/stwr:latest-go .
+            docker buildx build -f go.Dockerfile --platform linux/amd64,linux/arm64 --push -t patoarvizu/stwr:$CIRCLE_SHA1-go -t patoarvizu/stwr:$VERSION-go -t patoarvizu/stwr:latest-go .
 
 workflows:
   version: 2
