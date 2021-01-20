@@ -16,7 +16,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARM=$(if [ "$TARGETVARIANT" = "v7" ]; then echo "
 
 FROM ubuntu:20.04
 
-RUN apt install mplayer -y
+RUN apt-get update && apt-get install mplayer -y
 
 WORKDIR /
 
