@@ -42,6 +42,7 @@ type config struct {
 	s3Bucket      string
 	s3Key         string
 	s3Region      string
+	s3Endpoint    string
 }
 
 func main() {
@@ -54,6 +55,7 @@ func main() {
 	fl.StringVar(&cfg.s3Bucket, "s3-bucket", "", "S3 bucket to upload recording to. Only used if -copy-to-s3 is enabled.")
 	fl.StringVar(&cfg.s3Key, "s3-key", "", "S3 key (path) to upload recording to. Only used if -copy-to-s3 is enabled.")
 	fl.StringVar(&cfg.s3Region, "s3-region", "us-east-1", "AWS region for S3 uploads. Only used if -copy-to-s3 is enabled.")
+	fl.StringVar(&cfg.s3Endpoint, "s3-endpoint", "https://s3.amazonaws.com", "S3-compatible endpoint for file uploads. Only used if -copy-to-s3 is enabled.")
 	fl.Parse(os.Args[1:])
 
 	r, err := http.Get(fmt.Sprintf("http://playerservices.streamtheworld.com/api/livestream?version=1.5&mount=%s&lang=en", cfg.callSign))
@@ -106,7 +108,8 @@ func main() {
 	}
 	if cfg.copyToS3 {
 		awsSession := session.Must(session.NewSession(&aws.Config{
-			Region: aws.String(cfg.s3Region),
+			Region:   aws.String(cfg.s3Region),
+			Endpoint: aws.String(cfg.s3Endpoint),
 		}))
 		uploader := s3manager.NewUploader(awsSession)
 		f, err := os.Open(fmt.Sprintf("/tmp/.recordings/%s.mp3", recordingName))
