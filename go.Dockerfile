@@ -14,9 +14,9 @@ COPY streamtheworld.go streamtheworld.go
 
 RUN CGO_ENABLED=0 GOOS=linux GOARM=$(if [ "$TARGETVARIANT" = "v7" ]; then echo "7"; fi) GOARCH=$TARGETARCH GO111MODULE=on go build -a -o stwr streamtheworld.go
 
-FROM alpine:3.13.0
+FROM ubuntu:20.04
 
-RUN apk add mplayer
+RUN apt install mplayer -y
 
 WORKDIR /
 
