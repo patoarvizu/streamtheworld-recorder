@@ -108,8 +108,9 @@ func main() {
 	}
 	if cfg.copyToS3 {
 		awsSession := session.Must(session.NewSession(&aws.Config{
-			Region:   aws.String(cfg.s3Region),
-			Endpoint: aws.String(cfg.s3Endpoint),
+			Region:           aws.String(cfg.s3Region),
+			Endpoint:         aws.String(cfg.s3Endpoint),
+			S3ForcePathStyle: aws.Bool(true),
 		}))
 		uploader := s3manager.NewUploader(awsSession)
 		f, err := os.Open(fmt.Sprintf("/tmp/.recordings/%s.mp3", recordingName))
