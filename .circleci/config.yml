@@ -8,26 +8,25 @@ jobs:
     environment:
       DOCKER_CLI_EXPERIMENTAL: enabled
     steps:
-      - checkout
-      - run:
-          name: Build image
-          command: |
-            sudo apt-get update
-            sudo apt-get install qemu-user -y
-            docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-            docker buildx ls
-            docker login --username $DOCKER_HUB_USER --password $DOCKER_HUB_ACCESS_TOKEN
-            VERSION=${CIRCLE_TAG:-latest}
-            docker buildx create --name cci-builder --use
-            # docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 --push -t patoarvizu/stwr:$CIRCLE_SHA1 -t patoarvizu/stwr:$VERSION -t patoarvizu/stwr:latest .
-            docker buildx build -f go.Dockerfile --platform linux/amd64,linux/arm64 --push -t patoarvizu/stwr:$CIRCLE_SHA1-go -t patoarvizu/stwr:$VERSION-go -t patoarvizu/stwr:latest-go .
+    - checkout
+    - run:
+        name: Build image
+        command: |
+          sudo apt-get update
+          sudo apt-get install qemu-user -y
+          docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+          docker buildx ls
+          docker login --username $DOCKER_HUB_USER --password $DOCKER_HUB_ACCESS_TOKEN
+          VERSION=${CIRCLE_TAG:-latest}
+          docker buildx create --name cci-builder --use
+          docker buildx build -f go.Dockerfile --platform linux/amd64,linux/arm64 --push -t patoarvizu/stwr:$CIRCLE_SHA1 -t patoarvizu/stwr:$VERSION -t patoarvizu/stwr:latest .
 
 workflows:
   version: 2
   build:
     jobs:
-      - build:
-          context: authentication-tokens
-          filters:
-            tags:
-              only: /^v\d+\.\d+.\d+$/
+    - build:
+        context: authentication-tokens
+        filters:
+          tags:
+            only: /^v\d+\.\d+.\d+$/
