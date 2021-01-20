@@ -19,7 +19,7 @@ jobs:
           docker login --username $DOCKER_HUB_USER --password $DOCKER_HUB_ACCESS_TOKEN
           VERSION=${CIRCLE_TAG:-latest}
           docker buildx create --name cci-builder --use
-          docker buildx build -f go.Dockerfile --platform linux/amd64,linux/arm64 --push -t patoarvizu/stwr:$CIRCLE_SHA1 -t patoarvizu/stwr:$VERSION -t patoarvizu/stwr:latest .
+          docker buildx build --platform linux/amd64,linux/arm64 --push -t patoarvizu/stwr:$CIRCLE_SHA1 -t patoarvizu/stwr:$VERSION -t patoarvizu/stwr:latest .
 
 workflows:
   version: 2
