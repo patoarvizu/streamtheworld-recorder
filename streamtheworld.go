@@ -138,28 +138,5 @@ func copyToS3(recordingName string) error {
 	if err != nil {
 		return err
 	}
-	ts, err := os.Create(fmt.Sprintf("/tmp/.recordings/%s.timestamp", recordingName))
-	if err != nil {
-		return err
-	}
-	t := time.Now()
-	_, err = ts.WriteString(t.Format(time.RFC1123Z))
-	if err != nil {
-		return err
-	}
-	ts.Close()
-	ts, err = os.Open(fmt.Sprintf("/tmp/.recordings/%s.timestamp", recordingName))
-	if err != nil {
-		return err
-	}
-	defer ts.Close()
-	_, err = uploader.Upload(&s3manager.UploadInput{
-		Bucket: aws.String(cfg.s3Bucket),
-		Key:    aws.String(fmt.Sprintf("%s/%s.timestamp", cfg.s3Key, recordingName)),
-		Body:   ts,
-	})
-	if err != nil {
-		return err
-	}
 	return nil
 }
