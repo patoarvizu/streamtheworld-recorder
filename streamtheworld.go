@@ -46,8 +46,9 @@ type config struct {
 	s3DisableSSL  bool
 }
 
+var cfg = &config{}
+
 func main() {
-	var cfg = &config{}
 	fl := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	fl.DurationVar(&cfg.duration, "duration", time.Duration(60*time.Minute), "Recording duration.")
 	fl.StringVar(&cfg.callSign, "call-sign", "", "Station call sign.")
@@ -109,53 +110,56 @@ func main() {
 		}
 	}
 	if cfg.copyToS3 {
-		awsSession := session.Must(session.NewSession(&aws.Config{
-			Region:           aws.String(cfg.s3Region),
-			Endpoint:         aws.String(cfg.s3Endpoint),
-			S3ForcePathStyle: aws.Bool(true),
-			DisableSSL:       aws.Bool(cfg.s3DisableSSL),
-		}))
-		uploader := s3manager.NewUploader(awsSession)
-		f, err := os.Open(fmt.Sprintf("/tmp/.recordings/%s.mp3", recordingName))
+		err = copyToS3(recordingName)
 		if err != nil {
-			fmt.Printf("Error opening file: %v", err)
-			panic(err)
-		}
-		_, err = uploader.Upload(&s3manager.UploadInput{
-			Bucket: aws.String(cfg.s3Bucket),
-			Key:    aws.String(fmt.Sprintf("%s/%s.mp3", cfg.s3Key, recordingName)),
-			Body:   f,
-		})
-		if err != nil {
-			fmt.Printf("Error uploading file: %v", err)
-			panic(err)
-		}
-		ts, err := os.Create(fmt.Sprintf("/tmp/.recordings/%s.timestamp", recordingName))
-		if err != nil {
-			fmt.Printf("Error creating timestamp file: %v", err)
-			panic(err)
-		}
-		t := time.Now()
-		_, err = ts.WriteString(t.Format(time.RFC1123Z))
-		if err != nil {
-			fmt.Printf("Error creating timestamp file: %v", err)
-			panic(err)
-		}
-		ts.Close()
-		ts, err = os.Open(fmt.Sprintf("/tmp/.recordings/%s.timestamp", recordingName))
-		if err != nil {
-			fmt.Printf("Error re-opening timestamp file: %v", err)
-			panic(err)
-		}
-		defer ts.Close()
-		_, err = uploader.Upload(&s3manager.UploadInput{
-			Bucket: aws.String(cfg.s3Bucket),
-			Key:    aws.String(fmt.Sprintf("%s/%s.timestamp", cfg.s3Key, recordingName)),
-			Body:   ts,
-		})
-		if err != nil {
-			fmt.Printf("Error uploading timestamp file: %v", err)
+			fmt.Printf("Error uploading to S3: %v", err)
 			panic(err)
 		}
 	}
+}
+
+func copyToS3(recordingName string) error {
+	awsSession := session.Must(session.NewSession(&aws.Config{
+		Region:           aws.String(cfg.s3Region),
+		Endpoint:         aws.String(cfg.s3Endpoint),
+		S3ForcePathStyle: aws.Bool(true),
+		DisableSSL:       aws.Bool(cfg.s3DisableSSL),
+	}))
+	uploader := s3manager.NewUploader(awsSession)
+	f, err := os.Open(fmt.Sprintf("/tmp/.recordings/%s.mp3", recordingName))
+	if err != nil {
+		return err
+	}
+	_, err = uploader.Upload(&s3manager.UploadInput{
+		Bucket: aws.String(cfg.s3Bucket),
+		Key:    aws.String(fmt.Sprintf("%s/%s.mp3", cfg.s3Key, recordingName)),
+		Body:   f,
+	})
+	if err != nil {
+		return err
+	}
+	ts, err := os.Create(fmt.Sprintf("/tmp/.recordings/%s.timestamp", recordingName))
+	if err != nil {
+		return err
+	}
+	t := time.Now()
+	_, err = ts.WriteString(t.Format(time.RFC1123Z))
+	if err != nil {
+		return err
+	}
+	ts.Close()
+	ts, err = os.Open(fmt.Sprintf("/tmp/.recordings/%s.timestamp", recordingName))
+	if err != nil {
+		return err
+	}
+	defer ts.Close()
+	_, err = uploader.Upload(&s3manager.UploadInput{
+		Bucket: aws.String(cfg.s3Bucket),
+		Key:    aws.String(fmt.Sprintf("%s/%s.timestamp", cfg.s3Key, recordingName)),
+		Body:   ts,
+	})
+	if err != nil {
+		return err
+	}
+	return nil
 }
