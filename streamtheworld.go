@@ -121,7 +121,7 @@ func main() {
 			fmt.Printf("Error opening file: %v", err)
 			panic(err)
 		}
-		result, err := uploader.Upload(&s3manager.UploadInput{
+		_, err = uploader.Upload(&s3manager.UploadInput{
 			Bucket: aws.String(cfg.s3Bucket),
 			Key:    aws.String(fmt.Sprintf("%s/%s.mp3", cfg.s3Key, recordingName)),
 			Body:   f,
@@ -130,6 +130,32 @@ func main() {
 			fmt.Printf("Error uploading file: %v", err)
 			panic(err)
 		}
-		fmt.Printf("File uploaded to, %s\n", result.Location)
+		ts, err := os.Create(fmt.Sprintf("/tmp/.recordings/%s.timestamp", recordingName))
+		if err != nil {
+			fmt.Printf("Error creating timestamp file: %v", err)
+			panic(err)
+		}
+		t := time.Now()
+		_, err = ts.WriteString(t.Format(time.RFC1123Z))
+		if err != nil {
+			fmt.Printf("Error creating timestamp file: %v", err)
+			panic(err)
+		}
+		ts.Close()
+		ts, err = os.Open(fmt.Sprintf("/tmp/.recordings/%s.timestamp", recordingName))
+		if err != nil {
+			fmt.Printf("Error re-opening timestamp file: %v", err)
+			panic(err)
+		}
+		defer ts.Close()
+		_, err = uploader.Upload(&s3manager.UploadInput{
+			Bucket: aws.String(cfg.s3Bucket),
+			Key:    aws.String(fmt.Sprintf("%s/%s.timestamp", cfg.s3Key, recordingName)),
+			Body:   ts,
+		})
+		if err != nil {
+			fmt.Printf("Error uploading timestamp file: %v", err)
+			panic(err)
+		}
 	}
 }
