@@ -19,13 +19,14 @@ import (
 )
 
 type podcastConfig struct {
-	feedLocation   string
-	feedConfigFile string
-	s3Bucket       string
-	s3KeyToScan    string
-	s3Region       string
-	s3Endpoint     string
-	s3DisableSSL   bool
+	feedLocation            string
+	feedConfigFile          string
+	s3Bucket                string
+	s3KeyToScan             string
+	s3Region                string
+	s3Endpoint              string
+	s3DisableSSL            bool
+	episodeDownloadEndpoint string
 }
 
 type feedConfig struct {
@@ -46,6 +47,7 @@ func main() {
 	fl.StringVar(&cfg.s3Region, "s3-region", "us-east-1", "AWS region for S3 uploads.")
 	fl.StringVar(&cfg.s3Endpoint, "s3-endpoint", "https://s3.amazonaws.com", "S3-compatible endpoint for file downloads.")
 	fl.BoolVar(&cfg.s3DisableSSL, "s3-disable-ssl", false, "Disable SSL for the S3 endpoint.")
+	fl.StringVar(&cfg.episodeDownloadEndpoint, "episode-download-endpoint", "https://s3.amazonaws.com", "Base public endpoint for downloading podcast episodes.")
 	fl.Parse(os.Args[1:])
 
 	awsSession := session.Must(session.NewSession(&aws.Config{
@@ -115,7 +117,7 @@ func main() {
 				Description: filepath.Base(strings.TrimSuffix(*o.Key, ".mp3")),
 				PubDate:     o.LastModified,
 			}
-			item.AddEnclosure(fmt.Sprintf("%s/%s/%s", cfg.s3Endpoint, cfg.s3Bucket, *o.Key), podcast.MP3, *o.Size)
+			item.AddEnclosure(fmt.Sprintf("%s/%s/%s", cfg.episodeDownloadEndpoint, cfg.s3Bucket, *o.Key), podcast.MP3, *o.Size)
 			items = append(items, item)
 		}
 	}
