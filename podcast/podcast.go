@@ -115,9 +115,9 @@ func main() {
 			item := &podcast.Item{
 				Title:       filepath.Base(strings.TrimSuffix(*o.Key, ".mp3")),
 				Description: filepath.Base(strings.TrimSuffix(*o.Key, ".mp3")),
-				PubDate:     o.LastModified,
 			}
 			item.AddEnclosure(fmt.Sprintf("%s/%s/%s", cfg.episodeDownloadEndpoint, cfg.s3Bucket, *o.Key), podcast.MP3, *o.Size)
+			item.AddPubDate(o.LastModified)
 			items = append(items, item)
 		}
 	}
