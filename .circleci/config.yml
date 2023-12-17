@@ -4,7 +4,7 @@ jobs:
   build:
     machine:
       enabled: true
-      image: ubuntu-1604:202007-01
+      image: ubuntu-2204:2023.10.1
     environment:
       DOCKER_CLI_EXPERIMENTAL: enabled
     steps:
