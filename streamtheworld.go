@@ -163,7 +163,10 @@ func mergeFiles(recordingName string) error {
 	}
 
 	var final *godub.AudioSegment
-	if len(segmentSlice) == 1 {
+	if len(segmentSlice) == 0 {
+		log.Println("No audio files to upload. Exiting now.")
+		return nil
+	} else if len(segmentSlice) == 1 {
 		final = segmentSlice[0]
 	} else {
 		final, err = segmentSlice[0].Append(segmentSlice[1:]...)
