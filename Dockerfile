@@ -18,7 +18,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARM=$(if [ "$TARGETVARIANT" = "v7" ]; then echo "
 
 FROM alpine:3.19.0
 
-RUN apk -U add mplayer ffmpeg
+RUN apk -U add mplayer ffmpeg tzdata
 
 WORKDIR /
 

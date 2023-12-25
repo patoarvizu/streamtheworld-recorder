@@ -54,7 +54,7 @@ var cfg = &config{}
 func main() {
 	fl := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	fl.DurationVar(&cfg.duration, "duration", time.Duration(60*time.Minute), "Recording duration.")
-	fl.StringVar(&cfg.startTime, "start-time", time.Now().Format("2006-01-02 15:04"), "Recording start time.")
+	fl.StringVar(&cfg.startTime, "start-time", time.Now().In(time.Local).Format("2006-01-02 15:04"), "Recording start time.")
 	fl.StringVar(&cfg.callSign, "call-sign", "", "Station call sign.")
 	fl.StringVar(&cfg.recordingName, "recording-name", "", "Recording file name (without the .mp3 extension). Defaults to the value of -call-sign.")
 	fl.BoolVar(&cfg.copyToS3, "copy-to-s3", false, "Upload to S3 after recoding.")
@@ -93,11 +93,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	if time.Now().Before(startTimeDate) {
-		log.Fatalf("Too early to run. Start time is in the future. Start time: %s, now: %s.", startTimeDate.String(), time.Now().String())
+	now := time.Now().In(time.Local)
+	if now.Before(startTimeDate) {
+		log.Fatalf("Too early to run. Start time is in the future. Start time: %s, now: %s.", startTimeDate.String(), now.String())
 	}
-	if startTimeDate.Add(cfg.duration).Before(time.Now()) {
-		log.Printf("Current time (%s) is higher than startTime + duration (%s). Making sure files are copied to S3.", time.Now().String(), startTimeDate.Add(cfg.duration).String())
+	if startTimeDate.Add(cfg.duration).Before(now) {
+		log.Printf("Current time (%s) is higher than startTime + duration (%s). Making sure files are copied to S3.", now.String(), startTimeDate.Add(cfg.duration).String())
 		if cfg.copyToS3 {
 			err = copyToS3(recordingName)
 			if err != nil {
@@ -110,7 +111,7 @@ func main() {
 	s := streamConfig.Mountpoints.Mountpoint.Servers.Server[0]
 	p := s.Ports.Port[0]
 	for {
-		if startTimeDate.Add(cfg.duration).After(time.Now()) {
+		if startTimeDate.Add(cfg.duration).After(time.Now().In(time.Local)) {
 			err = runMplayer(p.Type, s.Ip, p.Text, recordingName, startTimeDate)
 			if err != nil {
 				log.Printf("Error running command: %s. Re-running.", err)
@@ -128,7 +129,7 @@ func main() {
 }
 
 func runMplayer(portType string, serverIp string, port string, recordingName string, startTimeDate time.Time) error {
-	cmd := exec.Command("mplayer", fmt.Sprintf("%s://%s:%s/%s", portType, serverIp, port, cfg.callSign), "-forceidx", "-dumpstream", "-dumpfile", fmt.Sprintf("/tmp/.recordings/segments/%s-%d.mp3", recordingName, time.Now().Unix()))
+	cmd := exec.Command("mplayer", fmt.Sprintf("%s://%s:%s/%s", portType, serverIp, port, cfg.callSign), "-forceidx", "-dumpstream", "-dumpfile", fmt.Sprintf("/tmp/.recordings/segments/%s-%d.mp3", recordingName, time.Now().In(time.Local).Unix()))
 	err := cmd.Start()
 	if err != nil {
 		return err
@@ -138,7 +139,7 @@ func runMplayer(portType string, serverIp string, port string, recordingName str
 		done <- cmd.Wait()
 	}()
 	select {
-	case <-time.After(time.Until(startTimeDate.Add(cfg.duration))):
+	case <-time.After(time.Until(startTimeDate.In(time.Local).Add(cfg.duration))):
 		err = cmd.Process.Signal(os.Interrupt)
 		return err
 	case err = <-done:
@@ -189,34 +190,47 @@ func copyToS3(recordingName string) error {
 		DisableSSL:       aws.Bool(cfg.s3DisableSSL),
 	}))
 	uploader := s3manager.NewUploader(awsSession)
-	f, err := os.Open(fmt.Sprintf("/tmp/.recordings/%s.mp3", recordingName))
-	if err != nil {
-		return err
+	_, err = os.Stat(fmt.Sprintf("/tmp/.recordings/%s.mp3", recordingName))
+	if !os.IsNotExist(err) {
+		f, err := os.Open(fmt.Sprintf("/tmp/.recordings/%s.mp3", recordingName))
+		if err != nil {
+			log.Printf("Error opening /tmp/.recordings/%s.mp3: %s", v.Name(), err)
+			log.Println("Continuing with uploading segments")
+		} else {
+			_, err = uploader.Upload(&s3manager.UploadInput{
+				Bucket: aws.String(cfg.s3Bucket),
+				Key:    aws.String(fmt.Sprintf("%s/%s.mp3", cfg.s3Key, recordingName)),
+				Body:   f,
+			})
+			if err != nil {
+				log.Printf("Error uploading /tmp/.recordings/%s.mp3: %s", v.Name(), err)
+				log.Println("Continuing with uploading segments")
+			}
+		}
 	}
-	_, err = uploader.Upload(&s3manager.UploadInput{
-		Bucket: aws.String(cfg.s3Bucket),
-		Key:    aws.String(fmt.Sprintf("%s/%s.mp3", cfg.s3Key, recordingName)),
-		Body:   f,
-	})
-	if err != nil {
-		return err
-	}
-	files, err := os.ReadDir("/tmp/.recordings/segments")
-	if err != nil {
-		return err
-	}
-	for _, v := range files {
-		f, err := os.Open(fmt.Sprintf("/tmp/.recordings/segments/%s", v.Name()))
+	_, err = os.Stat("/tmp/.recordings/segments")
+	if !os.IsNotExist(err) {
+		files, err := os.ReadDir("/tmp/.recordings/segments")
 		if err != nil {
 			return err
 		}
-		_, err = uploader.Upload(&s3manager.UploadInput{
-			Bucket: aws.String(cfg.s3Bucket),
-			Key:    aws.String(fmt.Sprintf("%s/segments/%s/%s", cfg.s3Key, recordingName, v.Name())),
-			Body:   f,
-		})
-		if err != nil {
-			return err
+		for _, v := range files {
+			f, err := os.Open(fmt.Sprintf("/tmp/.recordings/segments/%s", v.Name()))
+			if err != nil {
+				log.Printf("Error opening segment file /tmp/.recordings/segments/%s: %s", v.Name(), err)
+				log.Println("Skipping...")
+				continue
+			}
+			_, err = uploader.Upload(&s3manager.UploadInput{
+				Bucket: aws.String(cfg.s3Bucket),
+				Key:    aws.String(fmt.Sprintf("%s/segments/%s/%s", cfg.s3Key, recordingName, v.Name())),
+				Body:   f,
+			})
+			if err != nil {
+				log.Printf("Error uploading segment %s: %s", v.Name(), err)
+				log.Println("Skipping...")
+				continue
+			}
 		}
 	}
 	return nil
