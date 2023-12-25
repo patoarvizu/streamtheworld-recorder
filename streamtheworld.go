@@ -194,7 +194,7 @@ func copyToS3(recordingName string) error {
 	if !os.IsNotExist(err) {
 		f, err := os.Open(fmt.Sprintf("/tmp/.recordings/%s.mp3", recordingName))
 		if err != nil {
-			log.Printf("Error opening /tmp/.recordings/%s.mp3: %s", v.Name(), err)
+			log.Printf("Error opening /tmp/.recordings/%s.mp3: %s", recordingName, err)
 			log.Println("Continuing with uploading segments")
 		} else {
 			_, err = uploader.Upload(&s3manager.UploadInput{
@@ -203,7 +203,7 @@ func copyToS3(recordingName string) error {
 				Body:   f,
 			})
 			if err != nil {
-				log.Printf("Error uploading /tmp/.recordings/%s.mp3: %s", v.Name(), err)
+				log.Printf("Error uploading /tmp/.recordings/%s.mp3: %s", recordingName, err)
 				log.Println("Continuing with uploading segments")
 			}
 		}
