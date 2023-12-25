@@ -130,6 +130,8 @@ func main() {
 
 func runMplayer(portType string, serverIp string, port string, recordingName string, startTimeDate time.Time) error {
 	cmd := exec.Command("mplayer", fmt.Sprintf("%s://%s:%s/%s", portType, serverIp, port, cfg.callSign), "-forceidx", "-dumpstream", "-dumpfile", fmt.Sprintf("/tmp/.recordings/segments/%s-%d.mp3", recordingName, time.Now().In(time.Local).Unix()))
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	err := cmd.Start()
 	if err != nil {
 		return err
