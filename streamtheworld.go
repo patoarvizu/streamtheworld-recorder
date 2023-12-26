@@ -89,7 +89,7 @@ func main() {
 	} else {
 		recordingName = cfg.callSign
 	}
-	startTimeDate, err := time.Parse("2006-01-02 15:04", cfg.startTime)
+	startTimeDate, err := time.ParseInLocation("2006-01-02 15:04", cfg.startTime, time.Local)
 	if err != nil {
 		panic(err)
 	}
@@ -98,7 +98,7 @@ func main() {
 		log.Fatalf("Too early to run. Start time is in the future. Start time: %s, now: %s.", startTimeDate.String(), now.String())
 	}
 	if startTimeDate.Add(cfg.duration).Before(now) {
-		log.Printf("Current time (%s) is higher than startTime + duration (%s). Making sure files are copied to S3.", now.String(), startTimeDate.Add(cfg.duration).String())
+		log.Printf("Current time (%s) is later than startTime + duration (%s). Making sure files are copied to S3.", now.String(), startTimeDate.Add(cfg.duration).String())
 		if cfg.copyToS3 {
 			err = copyToS3(recordingName)
 			if err != nil {
