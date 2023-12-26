@@ -54,7 +54,7 @@ var cfg = &config{}
 func main() {
 	fl := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	fl.DurationVar(&cfg.duration, "duration", time.Duration(60*time.Minute), "Recording duration.")
-	fl.StringVar(&cfg.startTime, "start-time", time.Now().In(time.Local).Format("2006-01-02 15:04"), "Recording start time.")
+	fl.StringVar(&cfg.startTime, "start-time", time.Now().Format("2006-01-02 15:04"), "Recording start time.")
 	fl.StringVar(&cfg.callSign, "call-sign", "", "Station call sign.")
 	fl.StringVar(&cfg.recordingName, "recording-name", "", "Recording file name (without the .mp3 extension). Defaults to the value of -call-sign.")
 	fl.BoolVar(&cfg.copyToS3, "copy-to-s3", false, "Upload to S3 after recoding.")
@@ -89,11 +89,11 @@ func main() {
 	} else {
 		recordingName = cfg.callSign
 	}
-	startTimeDate, err := time.ParseInLocation("2006-01-02 15:04", cfg.startTime, time.Local)
+	startTimeDate, err := time.Parse("2006-01-02 15:04", cfg.startTime)
 	if err != nil {
 		panic(err)
 	}
-	now := time.Now().In(time.Local)
+	now := time.Now()
 	if now.Before(startTimeDate) {
 		log.Fatalf("Too early to run. Start time is in the future. Start time: %s, now: %s.", startTimeDate.String(), now.String())
 	}
@@ -111,7 +111,7 @@ func main() {
 	s := streamConfig.Mountpoints.Mountpoint.Servers.Server[0]
 	p := s.Ports.Port[0]
 	for {
-		if startTimeDate.Add(cfg.duration).After(time.Now().In(time.Local)) {
+		if startTimeDate.Add(cfg.duration).After(time.Now()) {
 			err = runMplayer(p.Type, s.Ip, p.Text, recordingName, startTimeDate)
 			if err != nil {
 				log.Printf("Error running command: %s. Re-running.", err)
@@ -129,7 +129,7 @@ func main() {
 }
 
 func runMplayer(portType string, serverIp string, port string, recordingName string, startTimeDate time.Time) error {
-	cmd := exec.Command("mplayer", fmt.Sprintf("%s://%s:%s/%s", portType, serverIp, port, cfg.callSign), "-forceidx", "-dumpstream", "-dumpfile", fmt.Sprintf("/tmp/.recordings/segments/%s-%d.mp3", recordingName, time.Now().In(time.Local).Unix()))
+	cmd := exec.Command("mplayer", fmt.Sprintf("%s://%s:%s/%s", portType, serverIp, port, cfg.callSign), "-forceidx", "-dumpstream", "-dumpfile", fmt.Sprintf("/tmp/.recordings/segments/%s-%d.mp3", recordingName, time.Now().Unix()))
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Start()
@@ -141,7 +141,7 @@ func runMplayer(portType string, serverIp string, port string, recordingName str
 		done <- cmd.Wait()
 	}()
 	select {
-	case <-time.After(time.Until(startTimeDate.In(time.Local).Add(cfg.duration))):
+	case <-time.After(time.Until(startTimeDate.Add(cfg.duration))):
 		err = cmd.Process.Signal(os.Interrupt)
 		return err
 	case err = <-done:
