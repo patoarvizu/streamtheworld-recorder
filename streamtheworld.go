@@ -54,7 +54,7 @@ var cfg = &config{}
 func main() {
 	fl := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	fl.DurationVar(&cfg.duration, "duration", time.Duration(60*time.Minute), "Recording duration.")
-	fl.StringVar(&cfg.startTime, "start-time", time.Now().Format("2006-01-02 15:04"), "Recording start time.")
+	fl.StringVar(&cfg.startTime, "start-time", time.Now().Format("2006-01-02 15:04 -0700 MST"), "Recording start time.")
 	fl.StringVar(&cfg.callSign, "call-sign", "", "Station call sign.")
 	fl.StringVar(&cfg.recordingName, "recording-name", "", "Recording file name (without the .mp3 extension). Defaults to the value of -call-sign.")
 	fl.BoolVar(&cfg.copyToS3, "copy-to-s3", false, "Upload to S3 after recoding.")
@@ -89,7 +89,7 @@ func main() {
 	} else {
 		recordingName = cfg.callSign
 	}
-	startTimeDate, err := time.Parse("2006-01-02 15:04", cfg.startTime)
+	startTimeDate, err := time.Parse("2006-01-02 15:04 -0700 MST", cfg.startTime)
 	if err != nil {
 		panic(err)
 	}
