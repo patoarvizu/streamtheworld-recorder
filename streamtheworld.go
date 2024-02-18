@@ -106,6 +106,7 @@ func main() {
 		if cfg.copyToS3 {
 			err = copyToS3(recordingName)
 			if err != nil {
+				log.Printf("Error uploading to S3: %v", err)
 				log.Fatalf("Error uploading to S3: %v", err)
 			}
 			return
@@ -129,6 +130,7 @@ func main() {
 		log.Println("Starting S3 upload")
 		err = copyToS3(recordingName)
 		if err != nil {
+			log.Printf("Error uploading to S3: %v", err)
 			log.Fatalf("Error uploading to S3: %v", err)
 		}
 	}
