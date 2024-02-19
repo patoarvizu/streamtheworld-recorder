@@ -109,6 +109,7 @@ func main() {
 				log.Printf("Error uploading to S3: %v", err)
 				log.Fatalf("Error uploading to S3: %v", err)
 			}
+			log.Println("Finished S3 upload")
 			return
 		}
 		return
@@ -133,6 +134,7 @@ func main() {
 			log.Printf("Error uploading to S3: %v", err)
 			log.Fatalf("Error uploading to S3: %v", err)
 		}
+		log.Println("Finished S3 upload")
 	}
 }
 
