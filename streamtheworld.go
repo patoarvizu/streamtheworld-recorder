@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"os/exec"
@@ -116,7 +117,7 @@ func main() {
 	p := s.Ports.Port[0]
 	for {
 		if startTimeDate.Add(cfg.duration).After(time.Now()) {
-			err = runMplayer(p.Type, s.Ip, p.Text, recordingName, startTimeDate)
+			err = runFfmpeg(p.Type, s.Ip, p.Text, recordingName, startTimeDate)
 			if err != nil {
 				log.Printf("Error running command: %s. Re-running.", err)
 			}
@@ -132,15 +133,20 @@ func main() {
 	}
 }
 
-func runMplayer(portType string, serverIp string, port string, recordingName string, startTimeDate time.Time) error {
-	cmd := exec.Command("mplayer", fmt.Sprintf("%s://%s:%s/%s", portType, serverIp, port, cfg.callSign), "-forceidx", "-dumpstream", "-dumpfile", fmt.Sprintf("/tmp/.recordings/segments/%s-%d.mp3", recordingName, time.Now().Unix()))
+func runFfmpeg(portType string, serverIp string, port string, recordingName string, startTimeDate time.Time) error {
+	err := os.MkdirAll("/tmp/.recordings/segments/", 0755)
+	if err != nil {
+		return err
+	}
+	seconds := int(math.Round(time.Until(startTimeDate.Add(cfg.duration)).Seconds()))
+	cmd := exec.Command("ffmpeg", "-i", fmt.Sprintf("%s://%s:%s/%s", portType, serverIp, port, cfg.callSign), "-t", fmt.Sprint(seconds), "-c", "copy", fmt.Sprintf("/tmp/.recordings/segments/%s-%d.mp3", recordingName, time.Now().Unix()))
 	if cfg.enableStdOut {
 		cmd.Stdout = os.Stdout
 	}
 	if cfg.enableStdErr {
 		cmd.Stderr = os.Stderr
 	}
-	err := cmd.Start()
+	err = cmd.Start()
 	if err != nil {
 		return err
 	}
@@ -149,9 +155,6 @@ func runMplayer(portType string, serverIp string, port string, recordingName str
 		done <- cmd.Wait()
 	}()
 	select {
-	case <-time.After(time.Until(startTimeDate.Add(cfg.duration))):
-		err = cmd.Process.Signal(os.Interrupt)
-		return err
 	case err = <-done:
 		return err
 	}
