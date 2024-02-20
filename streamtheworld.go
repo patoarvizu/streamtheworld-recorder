@@ -106,10 +106,8 @@ func main() {
 		if cfg.copyToS3 {
 			err = copyToS3(recordingName)
 			if err != nil {
-				log.Printf("Error uploading to S3: %v", err)
 				log.Fatalf("Error uploading to S3: %v", err)
 			}
-			log.Println("Finished S3 upload")
 			return
 		}
 		return
@@ -122,7 +120,6 @@ func main() {
 			if err != nil {
 				log.Printf("Error running command: %s. Re-running.", err)
 			}
-			log.Println("Finished running mplayer")
 		} else {
 			break
 		}
@@ -131,7 +128,6 @@ func main() {
 		log.Println("Starting S3 upload")
 		err = copyToS3(recordingName)
 		if err != nil {
-			log.Printf("Error uploading to S3: %v", err)
 			log.Fatalf("Error uploading to S3: %v", err)
 		}
 		log.Println("Finished S3 upload")
