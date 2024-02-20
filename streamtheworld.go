@@ -125,7 +125,6 @@ func main() {
 		}
 	}
 	if cfg.copyToS3 {
-		log.Println("Starting S3 upload")
 		err = copyToS3(recordingName)
 		if err != nil {
 			log.Fatalf("Error uploading to S3: %v", err)
