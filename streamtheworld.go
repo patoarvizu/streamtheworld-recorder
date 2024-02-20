@@ -130,7 +130,6 @@ func main() {
 		if err != nil {
 			log.Fatalf("Error uploading to S3: %v", err)
 		}
-		log.Println("Finished S3 upload")
 	}
 }
 
