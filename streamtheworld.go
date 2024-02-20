@@ -47,6 +47,8 @@ type config struct {
 	s3Region      string
 	s3Endpoint    string
 	s3DisableSSL  bool
+	enableStdOut  bool
+	enableStdErr  bool
 }
 
 var cfg = &config{}
@@ -63,6 +65,8 @@ func main() {
 	fl.StringVar(&cfg.s3Region, "s3-region", "us-east-1", "AWS region for S3 uploads. Only used if -copy-to-s3 is enabled.")
 	fl.StringVar(&cfg.s3Endpoint, "s3-endpoint", "https://s3.amazonaws.com", "S3-compatible endpoint for file uploads. Only used if -copy-to-s3 is enabled.")
 	fl.BoolVar(&cfg.s3DisableSSL, "s3-disable-ssl", false, "Disable SSL for the S3 endpoint. Only used if -copy-to-s3 is enabled.")
+	fl.BoolVar(&cfg.enableStdOut, "enable-stdout", false, "Enable logging stdout.")
+	fl.BoolVar(&cfg.enableStdErr, "enable-stderr", false, "Enable logging stderr.")
 	fl.Parse(os.Args[1:])
 
 	r, err := http.Get(fmt.Sprintf("http://playerservices.streamtheworld.com/api/livestream?version=1.5&mount=%s&lang=en", cfg.callSign))
@@ -102,7 +106,7 @@ func main() {
 		if cfg.copyToS3 {
 			err = copyToS3(recordingName)
 			if err != nil {
-				log.Panicf("Error uploading to S3: %v", err)
+				log.Fatalf("Error uploading to S3: %v", err)
 			}
 			return
 		}
@@ -123,15 +127,19 @@ func main() {
 	if cfg.copyToS3 {
 		err = copyToS3(recordingName)
 		if err != nil {
-			log.Panicf("Error uploading to S3: %v", err)
+			log.Fatalf("Error uploading to S3: %v", err)
 		}
 	}
 }
 
 func runMplayer(portType string, serverIp string, port string, recordingName string, startTimeDate time.Time) error {
 	cmd := exec.Command("mplayer", fmt.Sprintf("%s://%s:%s/%s", portType, serverIp, port, cfg.callSign), "-forceidx", "-dumpstream", "-dumpfile", fmt.Sprintf("/tmp/.recordings/segments/%s-%d.mp3", recordingName, time.Now().Unix()))
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	if cfg.enableStdOut {
+		cmd.Stdout = os.Stdout
+	}
+	if cfg.enableStdErr {
+		cmd.Stderr = os.Stderr
+	}
 	err := cmd.Start()
 	if err != nil {
 		return err
@@ -147,7 +155,6 @@ func runMplayer(portType string, serverIp string, port string, recordingName str
 	case err = <-done:
 		return err
 	}
-	return nil
 }
 
 func mergeFiles(recordingName string) error {
