@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -47,6 +48,7 @@ type config struct {
 	s3Endpoint    string
 	s3DisableSSL  bool
 	enableStdErr  bool
+	logLevel      string
 }
 
 var cfg = &config{}
@@ -64,6 +66,7 @@ func main() {
 	fl.StringVar(&cfg.s3Endpoint, "s3-endpoint", "https://s3.amazonaws.com", "S3-compatible endpoint for file uploads. Only used if -copy-to-s3 is enabled.")
 	fl.BoolVar(&cfg.s3DisableSSL, "s3-disable-ssl", false, "Disable SSL for the S3 endpoint. Only used if -copy-to-s3 is enabled.")
 	fl.BoolVar(&cfg.enableStdErr, "enable-stderr", false, "Enable logging stderr.")
+	fl.StringVar(&cfg.logLevel, "log-level", "info", "Log level of ffmpeg. Valid values (in ascending order of verbosity) are: 'quiet', 'fatal', 'error', 'warning', 'info', 'verbose', and 'debug'")
 	fl.Parse(os.Args[1:])
 
 	r, err := http.Get(fmt.Sprintf("http://playerservices.streamtheworld.com/api/livestream?version=1.5&mount=%s&lang=en", cfg.callSign))
@@ -112,10 +115,14 @@ func main() {
 	s := streamConfig.Mountpoints.Mountpoint.Servers.Server[0]
 	p := s.Ports.Port[0]
 	for {
-		if startTimeDate.Add(cfg.duration).After(time.Now()) {
+		if startTimeDate.Add(cfg.duration - (time.Second * 10)).After(time.Now()) {
 			err = runFfmpeg(p.Type, s.Ip, p.Text, recordingName, startTimeDate)
 			if err != nil {
-				log.Printf("Error running command: %s. Re-running.", err)
+				log.Printf("Error running ffmpeg: %s. Re-running.", err)
+				continue
+			}
+			if startTimeDate.Add(cfg.duration - (time.Second * 10)).After(time.Now()) {
+				log.Println("ffmpeg finished running prematurely. Re-running.")
 				continue
 			}
 			log.Printf("ffmpeg finished successfully")
@@ -135,11 +142,19 @@ func runFfmpeg(portType string, serverIp string, port string, recordingName stri
 	if seconds == 0 {
 		return nil
 	}
-	stream := ffmpeg.Input(fmt.Sprintf("%s://%s:%s/%s", portType, serverIp, port, cfg.callSign), ffmpeg.KwArgs{"t": fmt.Sprint(seconds)}).Output(fmt.Sprintf("/tmp/.recordings/segments/%s-%d.mp3", recordingName, time.Now().Unix())).Audio()
+	stream := ffmpeg.Input(fmt.Sprintf("%s://%s:%s/%s", portType, serverIp, port, cfg.callSign), ffmpeg.KwArgs{"t": fmt.Sprint(seconds), "timeout": "30000000", "v": cfg.logLevel}).Output(fmt.Sprintf("/tmp/.recordings/segments/%s-%d.mp3", recordingName, time.Now().Unix())).Audio()
 	if cfg.enableStdErr {
 		stream.ErrorToStdOut()
 	}
-	return stream.Run()
+	err := stream.Run()
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			exitCode := exitErr.ExitCode()
+			return fmt.Errorf("ffmpeg command failed with exit code %d", exitCode)
+		}
+		return err
+	}
+	return nil
 }
 
 func mergeFiles(recordingName string) error {
