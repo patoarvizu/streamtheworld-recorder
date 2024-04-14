@@ -3,11 +3,14 @@ module github.com/patoarvizu/streamtheworld-recorder
 go 1.21
 
 require (
-	github.com/aws/aws-sdk-go v1.36.29
+	github.com/aws/aws-sdk-go v1.38.20
 	github.com/eduncan911/podcast v1.4.2
+	github.com/u2takey/ffmpeg-go v0.5.0
 )
 
+require github.com/u2takey/go-utils v0.3.1 // indirect
+
 require (
-	github.com/iFaceless/godub v0.0.0-20200728093528-a30bb4d1a0f1 // indirect
-	github.com/tink-ab/tempfile v0.0.0-20180226111222-33beb0518f1a // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 )

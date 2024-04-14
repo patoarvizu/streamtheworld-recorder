@@ -14,7 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	"github.com/iFaceless/godub"
+	ffmpeg "github.com/u2takey/ffmpeg-go"
 )
 
 type LiveStreamConfig struct {
@@ -47,8 +47,8 @@ type config struct {
 	s3Region      string
 	s3Endpoint    string
 	s3DisableSSL  bool
-	enableStdOut  bool
 	enableStdErr  bool
+	logLevel      string
 }
 
 var cfg = &config{}
@@ -65,8 +65,8 @@ func main() {
 	fl.StringVar(&cfg.s3Region, "s3-region", "us-east-1", "AWS region for S3 uploads. Only used if -copy-to-s3 is enabled.")
 	fl.StringVar(&cfg.s3Endpoint, "s3-endpoint", "https://s3.amazonaws.com", "S3-compatible endpoint for file uploads. Only used if -copy-to-s3 is enabled.")
 	fl.BoolVar(&cfg.s3DisableSSL, "s3-disable-ssl", false, "Disable SSL for the S3 endpoint. Only used if -copy-to-s3 is enabled.")
-	fl.BoolVar(&cfg.enableStdOut, "enable-stdout", false, "Enable logging stdout.")
 	fl.BoolVar(&cfg.enableStdErr, "enable-stderr", false, "Enable logging stderr.")
+	fl.StringVar(&cfg.logLevel, "log-level", "info", "Log level of ffmpeg. Valid values (in ascending order of verbosity) are: 'quiet', 'fatal', 'error', 'warning', 'info', 'verbose', and 'debug'")
 	fl.Parse(os.Args[1:])
 
 	r, err := http.Get(fmt.Sprintf("http://playerservices.streamtheworld.com/api/livestream?version=1.5&mount=%s&lang=en", cfg.callSign))
@@ -83,7 +83,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	err = os.MkdirAll("/tmp/.recordings/segments", 0744)
+	err = os.MkdirAll("/tmp/.recordings/segments", 0755)
 	if err != nil {
 		panic(err)
 	}
@@ -115,14 +115,19 @@ func main() {
 	s := streamConfig.Mountpoints.Mountpoint.Servers.Server[0]
 	p := s.Ports.Port[0]
 	for {
-		if startTimeDate.Add(cfg.duration).After(time.Now()) {
-			err = runMplayer(p.Type, s.Ip, p.Text, recordingName, startTimeDate)
+		if startTimeDate.Add(cfg.duration - (time.Second * 10)).After(time.Now()) {
+			err = runFfmpeg(p.Type, s.Ip, p.Text, recordingName, startTimeDate)
 			if err != nil {
-				log.Printf("Error running command: %s. Re-running.", err)
+				log.Printf("Error running ffmpeg: %s. Re-running.", err)
+				continue
 			}
-		} else {
-			break
+			if startTimeDate.Add(cfg.duration - (time.Second * 10)).After(time.Now()) {
+				log.Println("ffmpeg finished running prematurely. Re-running.")
+				continue
+			}
+			log.Printf("ffmpeg finished successfully")
 		}
+		break
 	}
 	if cfg.copyToS3 {
 		err = copyToS3(recordingName)
@@ -132,29 +137,24 @@ func main() {
 	}
 }
 
-func runMplayer(portType string, serverIp string, port string, recordingName string, startTimeDate time.Time) error {
-	cmd := exec.Command("mplayer", fmt.Sprintf("%s://%s:%s/%s", portType, serverIp, port, cfg.callSign), "-forceidx", "-dumpstream", "-dumpfile", fmt.Sprintf("/tmp/.recordings/segments/%s-%d.mp3", recordingName, time.Now().Unix()))
-	if cfg.enableStdOut {
-		cmd.Stdout = os.Stdout
+func runFfmpeg(portType string, serverIp string, port string, recordingName string, startTimeDate time.Time) error {
+	seconds := int(time.Until(startTimeDate.Add(cfg.duration)).Seconds())
+	if seconds == 0 {
+		return nil
 	}
+	stream := ffmpeg.Input(fmt.Sprintf("%s://%s:%s/%s", portType, serverIp, port, cfg.callSign), ffmpeg.KwArgs{"t": fmt.Sprint(seconds), "timeout": "30000000", "v": cfg.logLevel}).Output(fmt.Sprintf("/tmp/.recordings/segments/%s-%d.mp3", recordingName, time.Now().Unix())).Audio()
 	if cfg.enableStdErr {
-		cmd.Stderr = os.Stderr
+		stream.ErrorToStdOut()
 	}
-	err := cmd.Start()
+	err := stream.Run()
 	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			exitCode := exitErr.ExitCode()
+			return fmt.Errorf("ffmpeg command failed with exit code %d", exitCode)
+		}
 		return err
 	}
-	done := make(chan error, 1)
-	go func() {
-		done <- cmd.Wait()
-	}()
-	select {
-	case <-time.After(time.Until(startTimeDate.Add(cfg.duration))):
-		err = cmd.Process.Signal(os.Interrupt)
-		return err
-	case err = <-done:
-		return err
-	}
+	return nil
 }
 
 func mergeFiles(recordingName string) error {
@@ -162,29 +162,16 @@ func mergeFiles(recordingName string) error {
 	if err != nil {
 		return err
 	}
-	loader := godub.NewLoader()
-	segmentSlice := []*godub.AudioSegment{}
+	segmentSlice := []*ffmpeg.Stream{}
 	for _, v := range files {
-		nextSegment, err := loader.Load(fmt.Sprintf("/tmp/.recordings/segments/%s", v.Name()))
-		if err != nil {
-			return err
-		}
-		segmentSlice = append(segmentSlice, nextSegment)
+		segment := ffmpeg.Input(fmt.Sprintf("/tmp/.recordings/segments/%s", v.Name()))
+		segmentSlice = append(segmentSlice, segment)
 	}
-
-	var final *godub.AudioSegment
 	if len(segmentSlice) == 0 {
 		log.Println("No audio files to upload. Exiting now.")
 		return nil
-	} else if len(segmentSlice) == 1 {
-		final = segmentSlice[0]
-	} else {
-		final, err = segmentSlice[0].Append(segmentSlice[1:]...)
-		if err != nil {
-			return err
-		}
 	}
-	return godub.NewExporter(fmt.Sprintf("/tmp/.recordings/%s.mp3", recordingName)).Export(final)
+	return ffmpeg.Concat(segmentSlice, ffmpeg.KwArgs{"v": 0, "a": 1}).Output(fmt.Sprintf("/tmp/.recordings/%s.mp3", recordingName)).Audio().Run()
 }
 
 func copyToS3(recordingName string) error {
