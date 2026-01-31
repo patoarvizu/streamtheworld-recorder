@@ -1,12 +1,9 @@
 package main
 
 import (
-	"encoding/xml"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"os/exec"
 	"time"
@@ -40,6 +37,7 @@ type config struct {
 	duration      time.Duration
 	startTime     string
 	callSign      string
+	streamUrl     string
 	recordingName string
 	copyToS3      bool
 	s3Bucket      string
@@ -58,7 +56,8 @@ func main() {
 	fl.DurationVar(&cfg.duration, "duration", time.Duration(60*time.Minute), "Recording duration.")
 	fl.StringVar(&cfg.startTime, "start-time", time.Now().Format("2006-01-02 15:04 -0700 MST"), "Recording start time.")
 	fl.StringVar(&cfg.callSign, "call-sign", "", "Station call sign.")
-	fl.StringVar(&cfg.recordingName, "recording-name", "", "Recording file name (without the .mp3 extension). Defaults to the value of -call-sign.")
+	fl.StringVar(&cfg.streamUrl, "stream-url", "", "Stream url")
+	fl.StringVar(&cfg.recordingName, "recording-name", "output", "Recording file name (without the .mp3 extension). Defaults to the value of -call-sign.")
 	fl.BoolVar(&cfg.copyToS3, "copy-to-s3", false, "Upload to S3 after recoding.")
 	fl.StringVar(&cfg.s3Bucket, "s3-bucket", "", "S3 bucket to upload recording to. Only used if -copy-to-s3 is enabled.")
 	fl.StringVar(&cfg.s3Key, "s3-key", "", "S3 key (path) to upload recording to. Only used if -copy-to-s3 is enabled.")
@@ -69,29 +68,9 @@ func main() {
 	fl.StringVar(&cfg.logLevel, "log-level", "info", "Log level of ffmpeg. Valid values (in ascending order of verbosity) are: 'quiet', 'fatal', 'error', 'warning', 'info', 'verbose', and 'debug'")
 	fl.Parse(os.Args[1:])
 
-	r, err := http.Get(fmt.Sprintf("http://playerservices.streamtheworld.com/api/livestream?version=1.5&mount=%s&lang=en", cfg.callSign))
+	err := os.MkdirAll("/tmp/.recordings/segments", 0755)
 	if err != nil {
 		panic(err)
-	}
-	defer r.Body.Close()
-	data, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		panic(err)
-	}
-	streamConfig := LiveStreamConfig{}
-	err = xml.Unmarshal(data, &streamConfig)
-	if err != nil {
-		panic(err)
-	}
-	err = os.MkdirAll("/tmp/.recordings/segments", 0755)
-	if err != nil {
-		panic(err)
-	}
-	var recordingName string
-	if len(cfg.recordingName) > 0 {
-		recordingName = cfg.recordingName
-	} else {
-		recordingName = cfg.callSign
 	}
 	startTimeDate, err := time.Parse("2006-01-02 15:04 -0700 MST", cfg.startTime)
 	if err != nil {
@@ -104,7 +83,7 @@ func main() {
 	if startTimeDate.Add(cfg.duration).Before(now) {
 		log.Printf("Current time (%s) is later than startTime + duration (%s). Making sure files are copied to S3.", now.String(), startTimeDate.Add(cfg.duration).String())
 		if cfg.copyToS3 {
-			err = copyToS3(recordingName)
+			err = copyToS3(cfg.recordingName)
 			if err != nil {
 				log.Fatalf("Error uploading to S3: %v", err)
 			}
@@ -112,11 +91,9 @@ func main() {
 		}
 		return
 	}
-	s := streamConfig.Mountpoints.Mountpoint.Servers.Server[0]
-	p := s.Ports.Port[0]
 	for {
 		if startTimeDate.Add(cfg.duration - (time.Second * 10)).After(time.Now()) {
-			err = runFfmpeg(p.Type, s.Ip, p.Text, recordingName, startTimeDate)
+			err = runFfmpeg(cfg.streamUrl, cfg.recordingName, startTimeDate)
 			if err != nil {
 				log.Printf("Error running ffmpeg: %s. Re-running.", err)
 				continue
@@ -130,19 +107,19 @@ func main() {
 		break
 	}
 	if cfg.copyToS3 {
-		err = copyToS3(recordingName)
+		err = copyToS3(cfg.recordingName)
 		if err != nil {
 			log.Fatalf("Error uploading to S3: %v", err)
 		}
 	}
 }
 
-func runFfmpeg(portType string, serverIp string, port string, recordingName string, startTimeDate time.Time) error {
+func runFfmpeg(streamUrl string, recordingName string, startTimeDate time.Time) error {
 	seconds := int(time.Until(startTimeDate.Add(cfg.duration)).Seconds())
 	if seconds == 0 {
 		return nil
 	}
-	stream := ffmpeg.Input(fmt.Sprintf("%s://%s:%s/%s", portType, serverIp, port, cfg.callSign), ffmpeg.KwArgs{"t": fmt.Sprint(seconds), "timeout": "30000000", "v": cfg.logLevel}).Output(fmt.Sprintf("/tmp/.recordings/segments/%s-%d.mp3", recordingName, time.Now().Unix())).Audio()
+	stream := ffmpeg.Input(streamUrl, ffmpeg.KwArgs{"t": fmt.Sprint(seconds), "timeout": "30000000", "v": cfg.logLevel}).Output(fmt.Sprintf("/tmp/.recordings/segments/%s-%d.mp3", recordingName, time.Now().Unix())).Audio()
 	if cfg.enableStdErr {
 		stream.ErrorToStdOut()
 	}
